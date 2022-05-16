@@ -1,4 +1,5 @@
 import pygame
+import math
 
 # ----- CONSTANTS
 BLACK = (0, 0, 0)
@@ -27,6 +28,12 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
 
+        self.image = pygame.image.load("./assets/demon.png")
+        self.image = pygame.transform.scale(self.image, (96, 70))
+
+        self.rect = self.image.get_rect()
+
+
 
 def main():
     pygame.init()
@@ -41,14 +48,25 @@ def main():
 
 
     # ----- LOCAL VARIABLES
+    # Pygame conditions
     done = False
     clock = pygame.time.Clock()
 
+    # Sprites
     all_sprites_group = pygame.sprite.Group()
+    enemy_sprites_group = pygame.sprite.Group()
 
     player = Player()
     all_sprites_group.add(player)
 
+    enemy = Enemy()
+    all_sprites_group.add(enemy)
+    enemy_sprites_group.add(enemy)
+
+    enemy.rect.x = 100
+    enemy.rect.y = 100
+
+    # Light circle
     radius = 75
 
     cover_surf = pygame.Surface((radius*2, radius*2))
@@ -56,6 +74,7 @@ def main():
     cover_surf.set_colorkey((255, 255, 255))
     pygame.draw.circle(cover_surf, (255, 255, 255), (radius, radius), radius)
 
+    # List of clicked sprites
     clicked_sprites = []
 
     # ----- MAIN LOOP
@@ -66,7 +85,7 @@ def main():
             if event.type == pygame.QUIT:
                 done = True
 
-            if event.type == pygame.MOUSEBUTTONUP:
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
 
                 # get a list of all sprites that are under the mouse cursor
@@ -74,11 +93,13 @@ def main():
                 print(clicked_sprites)
                 # do something with the clicked sprites...
 
-        clip_center = pygame.mouse.get_pos()
-
         clicked_sprites.clear()
 
         print(clicked_sprites)
+
+        # Light circle
+        clip_center = pygame.mouse.get_pos()
+        print(clip_center)
 
         screen.fill(0)
         clip_rect = pygame.Rect(clip_center[0] - radius, clip_center[1] - radius, radius * 2, radius * 2)
@@ -90,7 +111,10 @@ def main():
         # ----- RENDER
         screen.blit(background, (0, 0))
         screen.blit(cover_surf, clip_rect)
-        all_sprites_group.draw(screen)
+
+        # Render enemy only if they are close enough to the light
+        if math.sqrt((enemy.rect.x + (enemy.rect.width / 2) - clip_center[0]) ** 2 + (enemy.rect.y + (enemy.rect.height / 2) - clip_center[1]) ** 2) <= 90:
+            enemy_sprites_group.draw(screen)
 
         # ----- UPDATE DISPLAY
         pygame.display.flip()
