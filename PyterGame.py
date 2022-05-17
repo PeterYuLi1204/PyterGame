@@ -41,10 +41,18 @@ class Enemy(pygame.sprite.Sprite):
 
         self.mask = pygame.mask.from_surface(self.image)
 
+        self.xvel = 0
+        self.yvel = 0
+
+    def update(self):
+        """ Move the player. """
+        self.rect.x += self.xvel
+        self.rect.y += self.yvel
+
 
 def random_coords() -> tuple:
     """Returns a random x, y coordinate between 0 to WIDTH and 0 to HEIGHT"""
-    return random.randrange(40, WIDTH - 40), random.randrange(40, HEIGHT - 40)
+    return random.randrange(80, WIDTH - 80), random.randrange(80, HEIGHT - 80)
 
 
 def main():
@@ -95,6 +103,13 @@ def main():
     time_found = 0
     time_caught = 0
 
+    # Boolean to check if found
+    found = False
+
+    # Enemy velocity
+    velocity_x = 2
+    velocity_y = 4
+
     # Sounds
 
     # ----- MAIN LOOP
@@ -123,20 +138,37 @@ def main():
         screen.set_clip(clip_rect)
 
         # ----- LOGIC
-        player_sprites_group.update()
+        all_sprites_group.update()
 
-        enemy_collide = pygame.sprite.spritecollide(player, enemy_sprites_group, False, pygame.sprite.collide_mask)
+        if not found:
+            enemy_collide = pygame.sprite.spritecollide(player, enemy_sprites_group, False, pygame.sprite.collide_mask)
+
+        if (enemy.rect.x + 48)> WIDTH or enemy.rect.x < 0:
+            enemy.xvel *= -1
+
+        if (enemy.rect.y + 35) > HEIGHT or enemy.rect.y < 0:
+            enemy.yvel *= -1
 
         if len(enemy_collide) > 0:
+            found = True
+
+            enemy.xvel += velocity_x
+            enemy.yvel += velocity_y
+
+            velocity_x += 2
+            velocity_y += 2
 
             time_found = pygame.time.get_ticks()
+
+            enemy_collide.clear()
+
+        print(enemy.rect.x)
+        print(enemy.rect.y)
 
         # ----- RENDER
         screen.blit(background, (0, 0))
 
-        # Render enemy only if they are close enough to the light
-        if math.sqrt((enemy.rect.x + (enemy.rect.width / 2) - clip_center[0]) ** 2 + (enemy.rect.y + (enemy.rect.height / 2) - clip_center[1]) ** 2) <= 120:
-            enemy_sprites_group.draw(screen)
+        enemy_sprites_group.draw(screen)
 
         screen.blit(cover_surf, clip_rect)
 
