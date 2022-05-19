@@ -162,9 +162,6 @@ def main():
 
             enemy_collide.clear()
 
-        print(enemy.rect.x)
-        print(enemy.rect.y)
-
         # ----- RENDER
         screen.blit(background, (0, 0))
 
