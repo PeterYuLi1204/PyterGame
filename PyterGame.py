@@ -1,5 +1,4 @@
 import pygame
-import math
 import random
 
 # ----- CONSTANTS
@@ -7,8 +6,11 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 YELLOW = (255, 255, 0)
 SKY_BLUE = (95, 165, 228)
-WIDTH = 1200
-HEIGHT = 1200
+WIDTH = 800
+HEIGHT = 800
+RADIUS = 75
+TIME_TO_FIND = 8000
+TIME_TO_CATCH = 5000
 TITLE = "Pyter Game"
 
 
@@ -18,14 +20,14 @@ class Player(pygame.sprite.Sprite):
 
         # Image
         self.image = pygame.image.load("assets/circle.png")
-        self.image = pygame.transform.scale(self.image, (150, 150))
+        self.image = pygame.transform.scale(self.image, (2 * RADIUS - 40, 2 * RADIUS - 40))
 
         self.rect = self.image.get_rect()
 
         self.mask = pygame.mask.from_surface(self.image)
 
     def update(self):
-        """ Move the player. """
+        """Move the player."""
         self.rect.center = pygame.mouse.get_pos()
 
 
@@ -41,17 +43,21 @@ class Enemy(pygame.sprite.Sprite):
 
         self.mask = pygame.mask.from_surface(self.image)
 
-        self.xvel = 0
-        self.yvel = 0
+        self.xvel = 0.0
+        self.yvel = 0.0
 
     def update(self):
-        """ Move the player. """
+        """Move the enemy."""
         self.rect.x += self.xvel
         self.rect.y += self.yvel
 
+    def kill(self) -> None:
+        """Kill the enemy."""
+        pygame.sprite.Sprite.kill(self)
+
 
 def random_coords() -> tuple:
-    """Returns a random x, y coordinate between 0 to WIDTH and 0 to HEIGHT"""
+    """Returns a random x, y coordinate between 80 to WIDTH minus 80 and 80 to HEIGHT minus 80"""
     return random.randrange(80, WIDTH - 80), random.randrange(80, HEIGHT - 80)
 
 
@@ -85,32 +91,26 @@ def main():
     all_sprites_group.add(enemy)
 
     # Light circle
-    radius = 75
-
-    cover_surf = pygame.Surface((radius * 2, radius * 2))
+    cover_surf = pygame.Surface((RADIUS * 2, RADIUS * 2))
     cover_surf.fill(0)
     cover_surf.set_colorkey((255, 255, 255))
-    pygame.draw.circle(cover_surf, (255, 255, 255), (radius, radius), radius)
+    pygame.draw.circle(cover_surf, (255, 255, 255), (RADIUS, RADIUS), RADIUS)
 
-    # List of clicked sprites
-    clicked_sprites = []
-
-    # Time
-    time_to_find = 15000
-    time_to_catch = 10000
-
+    # Time tracking variables
     time_spawned = 0
     time_found = 0
     time_caught = 0
 
-    # Boolean to check if found
-    found = False
-
     # Enemy velocity
-    velocity_x = 2
-    velocity_y = 4
+    velocity_x = 2.0
+    velocity_y = 3.0
 
     # Sounds
+
+    enemy_sound = pygame.mixer.Sound("./assets/enemy laugh.ogg")
+
+    # Game conditions
+    found = False
 
     # ----- MAIN LOOP
 
@@ -121,20 +121,27 @@ def main():
                 done = True
 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                pos = pygame.mouse.get_pos()
+                # When clicked check if enemy was clicked
+                for e in enemy_sprites_group:
+                    if e.rect.collidepoint(pygame.mouse.get_pos()):
+                        # Kill enemy and create a new enemy
+                        e.kill()
+                        enemy = Enemy()
+                        all_sprites_group.add(enemy)
+                        enemy_sprites_group.add(enemy)
 
-                # get a list of all sprites that are under the mouse cursor
-                clicked_sprites = [s for s in enemy_sprites_group if s.rect.collidepoint(pos)]
-                print(clicked_sprites)
-                # do something with the clicked sprites...
+                        # Change conditions
+                        found = False
+                        level += 1
 
-        clicked_sprites.clear()
+                        # Increase the speed of the enemy
+                        velocity_x += 0.5
+                        velocity_y += 0.5
 
         # Light circle
         clip_center = pygame.mouse.get_pos()
-
         screen.fill(0)
-        clip_rect = pygame.Rect(clip_center[0] - radius, clip_center[1] - radius, radius * 2, radius * 2)
+        clip_rect = pygame.Rect(clip_center[0] - RADIUS, clip_center[1] - RADIUS, RADIUS * 2, RADIUS * 2)
         screen.set_clip(clip_rect)
 
         # ----- LOGIC
@@ -143,24 +150,25 @@ def main():
         if not found:
             enemy_collide = pygame.sprite.spritecollide(player, enemy_sprites_group, False, pygame.sprite.collide_mask)
 
-        if (enemy.rect.x + 48)> WIDTH or enemy.rect.x < 0:
+        if len(enemy_collide) > 0:
+            # Make it so the colliding won't register until the enemy is clicked
+            found = True
+
+            # Set the enemy's movement speed
+            enemy.xvel += (velocity_x * random.choice([-1, 1]))
+            enemy.yvel += (velocity_y * random.choice([-1, 1]))
+
+            time_found = pygame.time.get_ticks()
+
+            # Clear the list so that this if statement will only run for one loop
+            enemy_collide.clear()
+
+        # Make enemy bounce off walls
+        if (enemy.rect.x + 48) > WIDTH or enemy.rect.x < 0:
             enemy.xvel *= -1
 
         if (enemy.rect.y + 35) > HEIGHT or enemy.rect.y < 0:
             enemy.yvel *= -1
-
-        if len(enemy_collide) > 0:
-            found = True
-
-            enemy.xvel += velocity_x
-            enemy.yvel += velocity_y
-
-            velocity_x += 2
-            velocity_y += 2
-
-            time_found = pygame.time.get_ticks()
-
-            enemy_collide.clear()
 
         # ----- RENDER
         screen.blit(background, (0, 0))
@@ -172,7 +180,6 @@ def main():
         # ----- UPDATE DISPLAY
         pygame.display.flip()
         clock.tick(75)
-
 
     pygame.quit()
 
