@@ -9,8 +9,7 @@ SKY_BLUE = (95, 165, 228)
 WIDTH = 800
 HEIGHT = 800
 RADIUS = 75
-TIME_TO_FIND = 8000
-TIME_TO_CATCH = 5000
+TIME_TO_CATCH = 10000
 TITLE = "Pyter Game"
 
 
@@ -97,8 +96,6 @@ def main():
     pygame.draw.circle(cover_surf, (255, 255, 255), (RADIUS, RADIUS), RADIUS)
 
     # Time tracking variables
-    time_spawned = 0
-    time_found = 0
     time_caught = 0
 
     # Enemy velocity
@@ -107,10 +104,12 @@ def main():
 
     # Sounds
 
-    enemy_sound = pygame.mixer.Sound("./assets/enemy laugh.ogg")
+    enemy_sound = pygame.mixer.Sound("./assets/enemy-laugh.ogg")
 
     # Game conditions
     found = False
+
+    score = 0
 
     # ----- MAIN LOOP
 
@@ -132,7 +131,7 @@ def main():
 
                         # Change conditions
                         found = False
-                        level += 1
+                        score += 1
 
                         # Increase the speed of the enemy
                         velocity_x += 0.5
@@ -151,14 +150,15 @@ def main():
             enemy_collide = pygame.sprite.spritecollide(player, enemy_sprites_group, False, pygame.sprite.collide_mask)
 
         if len(enemy_collide) > 0:
-            # Make it so the colliding won't register until the enemy is clicked
+            # Make it so the colliding won't register again until the enemy is clicked
             found = True
+
+            # Play enemy found sound
+            enemy_sound.play()
 
             # Set the enemy's movement speed
             enemy.xvel += (velocity_x * random.choice([-1, 1]))
             enemy.yvel += (velocity_y * random.choice([-1, 1]))
-
-            time_found = pygame.time.get_ticks()
 
             # Clear the list so that this if statement will only run for one loop
             enemy_collide.clear()
@@ -169,6 +169,8 @@ def main():
 
         if (enemy.rect.y + 35) > HEIGHT or enemy.rect.y < 0:
             enemy.yvel *= -1
+
+        # Game over if the player does not catch the enemy in time
 
         # ----- RENDER
         screen.blit(background, (0, 0))
