@@ -9,6 +9,7 @@ SKY_BLUE = (95, 165, 228)
 WIDTH = 800
 HEIGHT = 800
 RADIUS = 75
+TIME_TO_FIND = 8000
 TIME_TO_CATCH = 10000
 TITLE = "Pyter Game"
 
@@ -71,6 +72,9 @@ def main():
 
     background = pygame.image.load("./assets/floor_tiles.png").convert()
 
+    jump_scare = pygame.image.load("./assets/demon.png")
+    jump_scare = pygame.transform.scale(jump_scare, (800, 800))
+
     # ----- LOCAL VARIABLES
     # Pygame conditions
     done = False
@@ -89,25 +93,23 @@ def main():
     enemy_sprites_group.add(enemy)
     all_sprites_group.add(enemy)
 
-    # Light circle
-    cover_surf = pygame.Surface((RADIUS * 2, RADIUS * 2))
-    cover_surf.fill(0)
-    cover_surf.set_colorkey((255, 255, 255))
-    pygame.draw.circle(cover_surf, (255, 255, 255), (RADIUS, RADIUS), RADIUS)
-
     # Time tracking variables
-    time_caught = 0
+    time_spawned = 0
+    time_found = 0
 
     # Enemy velocity
     velocity_x = 2.0
     velocity_y = 3.0
 
     # Sounds
-
     enemy_sound = pygame.mixer.Sound("./assets/enemy-laugh.ogg")
+    kill_sound = pygame.mixer.Sound("./assets/kill-sound.ogg")
+    death_sound = pygame.mixer.Sound("./assets/death-sound.ogg")
 
     # Game conditions
     found = False
+    game_over = False
+    jump_scare_played = False
 
     score = 0
 
@@ -132,52 +134,79 @@ def main():
                         # Change conditions
                         found = False
                         score += 1
+                        enemy_sound.stop()
+                        kill_sound.play()
+                        time_spawned = pygame.time.get_ticks()
 
                         # Increase the speed of the enemy
                         velocity_x += 0.5
                         velocity_y += 0.5
 
-        # Light circle
-        clip_center = pygame.mouse.get_pos()
-        screen.fill(0)
-        clip_rect = pygame.Rect(clip_center[0] - RADIUS, clip_center[1] - RADIUS, RADIUS * 2, RADIUS * 2)
-        screen.set_clip(clip_rect)
+        if not game_over:
+            # ----- LOGIC
+            all_sprites_group.update()
 
-        # ----- LOGIC
-        all_sprites_group.update()
+            if not found:
+                enemy_collide = pygame.sprite.spritecollide(player, enemy_sprites_group, False, pygame.sprite.collide_mask)
 
-        if not found:
-            enemy_collide = pygame.sprite.spritecollide(player, enemy_sprites_group, False, pygame.sprite.collide_mask)
+                # Game over if the player does not find the enemy in time
+                if pygame.time.get_ticks() - time_spawned > TIME_TO_FIND:
+                    game_over = True
 
-        if len(enemy_collide) > 0:
-            # Make it so the colliding won't register again until the enemy is clicked
-            found = True
+            if len(enemy_collide) > 0:
+                # Make it so the colliding won't register again until the enemy is clicked
+                found = True
 
-            # Play enemy found sound
-            enemy_sound.play()
+                # Play enemy found sound
+                enemy_sound.play()
 
-            # Set the enemy's movement speed
-            enemy.xvel += (velocity_x * random.choice([-1, 1]))
-            enemy.yvel += (velocity_y * random.choice([-1, 1]))
+                # Set the enemy's movement speed and random direction
+                enemy.xvel += (velocity_x * random.choice([-1, 1]))
+                enemy.yvel += (velocity_y * random.choice([-1, 1]))
 
-            # Clear the list so that this if statement will only run for one loop
-            enemy_collide.clear()
+                # Clear the list so that this if statement will only run for one loop
+                enemy_collide.clear()
 
-        # Make enemy bounce off walls
-        if (enemy.rect.x + 48) > WIDTH or enemy.rect.x < 0:
-            enemy.xvel *= -1
+                # Set time found
+                time_found = pygame.time.get_ticks()
 
-        if (enemy.rect.y + 35) > HEIGHT or enemy.rect.y < 0:
-            enemy.yvel *= -1
+            # Make enemy bounce off walls
+            if (enemy.rect.x + 48) > WIDTH or enemy.rect.x < 0:
+                enemy.xvel *= -1
 
-        # Game over if the player does not catch the enemy in time
+            if (enemy.rect.y + 35) > HEIGHT or enemy.rect.y < 0:
+                enemy.yvel *= -1
+
+            # Game over if the player does not catch the enemy in time
+            if pygame.time.get_ticks() - time_found > TIME_TO_CATCH:
+                game_over = True
 
         # ----- RENDER
-        screen.blit(background, (0, 0))
+            cover_surf = pygame.Surface((RADIUS * 2, RADIUS * 2))
+            cover_surf.fill(0)
+            cover_surf.set_colorkey((255, 255, 255))
+            pygame.draw.circle(cover_surf, (255, 255, 255), (RADIUS, RADIUS), RADIUS)
 
-        enemy_sprites_group.draw(screen)
+            clip_center = pygame.mouse.get_pos()
+            screen.fill(0)
+            clip_rect = pygame.Rect(clip_center[0] - RADIUS, clip_center[1] - RADIUS, RADIUS * 2, RADIUS * 2)
+            screen.set_clip(clip_rect)
 
-        screen.blit(cover_surf, clip_rect)
+            screen.blit(background, (0, 0))
+            enemy_sprites_group.draw(screen)
+            screen.blit(cover_surf, clip_rect)
+
+        else:
+            # ----- LOGIC
+            if not jump_scare_played:
+                death_sound.play()
+                jump_scare_played = True
+
+            # ----- RENDER
+            rect = pygame.Rect(0, 0, WIDTH, HEIGHT)
+            screen.set_clip(rect)
+            screen.fill(BLACK)
+            screen.blit(jump_scare, (0, 0))
 
         # ----- UPDATE DISPLAY
         pygame.display.flip()
