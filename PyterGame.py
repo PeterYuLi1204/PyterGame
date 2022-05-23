@@ -22,8 +22,8 @@ class Player(pygame.sprite.Sprite):
         self.image = pygame.image.load("assets/circle.png")
         self.image = pygame.transform.scale(self.image, (2 * RADIUS - 40, 2 * RADIUS - 40))
 
+        # Collision
         self.rect = self.image.get_rect()
-
         self.mask = pygame.mask.from_surface(self.image)
 
     def update(self):
@@ -38,11 +38,12 @@ class Enemy(pygame.sprite.Sprite):
         self.image = pygame.image.load("./assets/demon.png")
         self.image = pygame.transform.scale(self.image, (96, 70))
 
+        # Collision
         self.rect = self.image.get_rect()
         self.rect.center = random_coords()
-
         self.mask = pygame.mask.from_surface(self.image)
 
+        # Velocity
         self.xvel = 0.0
         self.yvel = 0.0
 
@@ -80,6 +81,13 @@ def main():
     done = False
     clock = pygame.time.Clock()
 
+    # Game conditions
+    found = False
+    game_over = False
+    jump_scare_played = False
+    text_displayed = False
+    score = 0
+
     # Sprites
     all_sprites_group = pygame.sprite.Group()
     player_sprites_group = pygame.sprite.Group()
@@ -106,12 +114,8 @@ def main():
     kill_sound = pygame.mixer.Sound("./assets/kill-sound.ogg")
     death_sound = pygame.mixer.Sound("./assets/death-sound.ogg")
 
-    # Game conditions
-    found = False
-    game_over = False
-    jump_scare_played = False
-
-    score = 0
+    # Font
+    font = pygame.font.SysFont("Georgia", 80)
 
     # ----- MAIN LOOP
 
@@ -139,13 +143,15 @@ def main():
                         time_spawned = pygame.time.get_ticks()
 
                         # Increase the speed of the enemy
-                        velocity_x += 0.5
-                        velocity_y += 0.5
+                        velocity_x += 1
+                        velocity_y += 1
 
         if not game_over:
             # ----- LOGIC
+            # Update sprites
             all_sprites_group.update()
 
+            # Check if found yet to only allow collision once
             if not found:
                 enemy_collide = pygame.sprite.spritecollide(player, enemy_sprites_group, False, pygame.sprite.collide_mask)
 
@@ -153,6 +159,7 @@ def main():
                 if pygame.time.get_ticks() - time_spawned > TIME_TO_FIND:
                     game_over = True
 
+            # Make enemy move and laugh if collided with
             if len(enemy_collide) > 0:
                 # Make it so the colliding won't register again until the enemy is clicked
                 found = True
@@ -182,6 +189,7 @@ def main():
                 game_over = True
 
         # ----- RENDER
+            # Light circle
             cover_surf = pygame.Surface((RADIUS * 2, RADIUS * 2))
             cover_surf.fill(0)
             cover_surf.set_colorkey((255, 255, 255))
@@ -192,6 +200,7 @@ def main():
             clip_rect = pygame.Rect(clip_center[0] - RADIUS, clip_center[1] - RADIUS, RADIUS * 2, RADIUS * 2)
             screen.set_clip(clip_rect)
 
+            # Game and sprites
             screen.blit(background, (0, 0))
             enemy_sprites_group.draw(screen)
             screen.blit(cover_surf, clip_rect)
@@ -203,10 +212,17 @@ def main():
                 jump_scare_played = True
 
             # ----- RENDER
+            # Image
             rect = pygame.Rect(0, 0, WIDTH, HEIGHT)
             screen.set_clip(rect)
             screen.fill(BLACK)
             screen.blit(jump_scare, (0, 0))
+
+            # Words
+            score_surf = font.render(f"Final Score: {score}", True, WHITE)
+            score_rect = score_surf.get_rect()
+            score_rect.midtop = (WIDTH/2, 700)
+            screen.blit(score_surf, score_rect)
 
         # ----- UPDATE DISPLAY
         pygame.display.flip()
