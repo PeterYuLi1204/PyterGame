@@ -85,7 +85,6 @@ def main():
     found = False
     game_over = False
     jump_scare_played = False
-    text_displayed = False
     score = 0
 
     # Sprites
